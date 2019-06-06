@@ -30,8 +30,11 @@ const colorSlider = document.querySelector("#colorSlider")
 const sample = document.querySelector("#sample")
 const changeWidth = document.querySelector("#changeWidth")
 const changeColor = document.querySelector("#changeColor")
-
 const socket = io.connect('http://vps694867.ovh.net:8008/');
+
+socket.on("draw", (data)=> {
+  execute(data)
+})
 
 // old code
 const canvas = document.querySelector('#draw');
@@ -42,6 +45,7 @@ ctx.strokeStyle = '#BADA55';
 ctx.lineJoin = 'round';
 ctx.lineCap = 'round';
 ctx.lineWidth = 100;
+let lineWidth
 // ctx.globalCompositeOperation = 'multiply';
 
 let isDrawing = false;
@@ -50,22 +54,62 @@ let lastY = 0;
 let hue = 0;
 let direction = true;
 
+changeColor.addEventListener('change', (event)=>{
+    
+colorChange = event.target.checked;
+})
+changeWidth.addEventListener('change', (event)=>{
+  widthChange = event.target.checked;
+
+})
+
+let widthChange = true;
+let colorChange = true;
+
+colorSlider.addEventListener("change", (event)=>{
+hue = event.target.value;
+})
+widthSlider.addEventListener("change", (event)=>{
+ctx.lineWidth = event.target.value;
+})
+
+const myOrder = {
+  lineFrom:[0,0],
+  lineTo:[100,100],
+  hue:100,
+  lineWidth:100,
+}
+
+function execute(order){
+  ctx.strokeStyle = `hsl(${order.hue}, 100%, 50%`;
+  ctx.beginPath();
+  ctx.moveTo(...order.lineFrom);
+  ctx.lineWidth = lineWidth;
+  ctx.lineTo(...order.lineTo);
+  ctx.stroke();
+}
+execute(myOrder);
+
 function draw(e) {
   if (!isDrawing) return; // stop the fn from running when they are not moused down
   console.log(e);
-  ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
-  ctx.beginPath();
-  // start from
-  ctx.moveTo(lastX, lastY);
-  // go to
-  ctx.lineTo(e.offsetX, e.offsetY);
-  ctx.stroke();
-  [lastX, lastY] = [e.offsetX, e.offsetY];
+  const order = {
+    lineFrom:[lastX,lastY],
+    lineTo:[e.offsetX, e.offsetY],
+    hue:hue,
+    lineWidth:lineWidth
+  }
+socket.emit("draw",order);
 
+[lastX, lastY] = [e.offsetX, e.offsetY];
+
+if(colorChange){
   hue++;
   if (hue >= 360) {
     hue = 0;
   }
+}
+if(widthChange) {
   if (ctx.lineWidth >= 100 || ctx.lineWidth <= 1) {
     direction = !direction;
   }
@@ -75,7 +119,7 @@ function draw(e) {
   } else {
     ctx.lineWidth--;
   }
-
+}
 }
 
 canvas.addEventListener('mousedown', (e) => {
